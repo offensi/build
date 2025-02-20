@@ -1,0 +1,48 @@
+name: Trigger auto deployment for contwtm
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ main ]
+    paths:
+    - '**'
+    - '.github/workflows/contwtm-AutoDeployTrigger-d699b87d-2e23-4b8e-8672-89d3cded9d52.yml'
+
+  # Allow manual trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+      contents: read #Required when GH token is used to authenticate with private repo
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.CONTWTM_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.CONTWTM_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CONTWTM_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}
+          _dockerfilePathKey_: _dockerfilePath_
+          registryUrl: recon.offensi.com
+          registryUsername: ${{ secrets.CONTWTM_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.CONTWTM_REGISTRY_PASSWORD }}
+          containerAppName: contwtm
+          resourceGroup: east-rg
+          imageToBuild: recon.offensi.com/contwtm:${{ github.sha }}
+          _buildArgumentsKey_: |
+            _buildArgumentsValues_
+
+
